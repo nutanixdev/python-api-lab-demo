@@ -10,4 +10,3 @@ class clusterForm(FlaskForm):
     username = StringField('username', validators=[DataRequired()])
     password = PasswordField('password', validators=[DataRequired()])
     submit = SubmitField('Go!', id="goButton")
-

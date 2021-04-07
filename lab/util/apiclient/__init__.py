@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.8
 
 import sys
 import requests
@@ -43,11 +43,5 @@ class ApiClient():
             if r.status_code == 401:
                 print(f'An authentication error occurred while connecting to {self.cluster_ip}. Please check your credentials, then try again.')
                 sys.exit()
-            #if r.status_code > 401:
-                #print(json.loads(r.text)['message_list'][0]['message'])
-                #sys.exit()
-            # else:
-                # print('Connected and authenticated successfully.')
 
         return(r.json())
-

@@ -12,4 +12,3 @@ def index():
     # make sure we are using the form that's been generated in forms.py
     form = clusterForm()
     return render_template('index.html', form=form)
-

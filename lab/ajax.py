@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 from datetime import timedelta
 import time
+import urllib3
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for, jsonify
@@ -14,6 +15,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from .util import apiclient
 
 bp = Blueprint('ajax', __name__, url_prefix='/ajax')
+
+"""
+disable insecure connection warnings
+please be advised and aware of the implications of doing this
+in a production environment!
+"""
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 """
 get the form POST data provided by the user
@@ -103,4 +111,3 @@ def containers():
     client = apiclient.ApiClient('get',cvmAddress,f'storage_containers','',username,password,'v2.0')
     results = client.get_info()
     return jsonify(results)
-

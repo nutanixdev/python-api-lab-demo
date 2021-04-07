@@ -20,19 +20,18 @@ def create_app(test_config=None):
         'css/lib/jq.jqplot.css',
         'css/ntnx.css'
     )
-
     home_js = Bundle(
-        'js/lib/jquery-2.1.3.min.js',
-        'js/lib/classie.min.js',
-        'js/lib/ntnx-bootstrap.min.js',
-        'js/lib/modernizr.custom.min.js',
-        'js/lib/jquery.jqplot.min.js',
-        'js/lib/jqplot.logAxisRenderer.js',
-        'js/lib/jqplot.categoryAxisRenderer.js',
-        'js/lib/jqplot.canvasAxisLabelRenderer.js',
-        'js/lib/jqplot.canvasTextRenderer.js',
-        'js/lib/jquery.gridster.min.js',
-        'js/ntnx.js'
+            'js/lib/jquery-2.1.3.min.js',
+            'js/lib/classie.min.js',
+            'js/lib/ntnx-bootstrap.min.js',
+            'js/lib/modernizr.custom.min.js',
+            'js/lib/jquery.jqplot.min.js',
+            'js/lib/jqplot.logAxisRenderer.js',
+            'js/lib/jqplot.categoryAxisRenderer.js',
+            'js/lib/jqplot.canvasAxisLabelRenderer.js',
+            'js/lib/jqplot.canvasTextRenderer.js',
+            'js/lib/jquery.gridster.min.js',
+            'js/ntnx.js'
     )
 
     assets.register('home_css',home_css)
@@ -60,4 +59,3 @@ def create_app(test_config=None):
     app.register_blueprint(ajax.bp)
 
     return app
-
