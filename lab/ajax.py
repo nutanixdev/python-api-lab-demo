@@ -1,20 +1,20 @@
 import os
 import json
 import base64
-import sys
 from datetime import datetime
 from datetime import timedelta
 import time
 import urllib3
 
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for, jsonify
+    Blueprint,
+    request,
+    jsonify,
 )
-from werkzeug.security import check_password_hash, generate_password_hash
 
 from .util import apiclient
 
-bp = Blueprint('ajax', __name__, url_prefix='/ajax')
+bp = Blueprint("ajax", __name__, url_prefix="/ajax")
 
 """
 disable insecure connection warnings
@@ -23,68 +23,68 @@ in a production environment!
 """
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+
 """
 get the form POST data provided by the user
 """
+
+
 def get_form():
     global form_data
     global cvmAddress
     global username
     global password
+    global entity
     form_data = request.form
-    cvmAddress = form_data['_cvmAddress']
-    username = form_data['_username']
-    password = form_data['_password']
+    cvmAddress = form_data["_cvmAddress"]
+    username = form_data["_username"]
+    password = form_data["_password"]
+    entity = form_data["_entity"]
+
 
 """
 load the default layout at app startup
 """
-@bp.route('/load-layout',methods=['POST'])
+
+
+@bp.route("/load-layout", methods=["POST"])
 def load_layout():
     site_root = os.path.realpath(os.path.dirname(__file__))
-    layout_path = 'static/layouts'
-    dashboard_file = 'dashboard.json'
-    with open( f'{site_root}/{layout_path}/{dashboard_file}','r') as f:
+    layout_path = "static/layouts"
+    dashboard_file = "dashboard.json"
+    with open(f"{site_root}/{layout_path}/{dashboard_file}", "r") as f:
         raw_json = json.loads(f.read())
-        return base64.b64decode(raw_json['layout']).decode('utf-8')
+        return base64.b64decode(raw_json["layout"]).decode("utf-8")
+
 
 """
-get some high level cluster info
+connect to prism central and collect details about a specific type of entity
 """
-@bp.route('/cluster-info',methods=['POST'])
-def cluster_info():
+
+
+@bp.route("/pc-list-entities", methods=["POST"])
+def pc_list_entities():
     # get the request's POST data
     get_form()
-    client = apiclient.ApiClient('post', cvmAddress,'clusters/list','{"kind":"cluster"}',username,password)
+    client = apiclient.ApiClient(
+        method="post",
+        cluster_ip=cvmAddress,
+        request=f"{entity}s/list",
+        entity=entity,
+        body=f'{{"kind": "{entity}"}}',
+        username=username,
+        password=password,
+    )
     results = client.get_info()
     return jsonify(results)
 
-"""
-get the vm count
-"""
-@bp.route('/vm-info',methods=['GET','POST'])
-def vm_info():
-    # get the request's POST data
-    get_form()
-    client = apiclient.ApiClient('get', cvmAddress,'vms','',username,password,'v2.0')
-    results = client.get_info()
-    return jsonify(results)
 
 """
-get the cluster's physical info e.g. # of hosts, host serial numbers
+get storage performance stats for the first storage container in a cluster
 """
-@bp.route('/physical-info',methods=['POST'])
-def physical_info():
-    # get the request's POST data
-    get_form()
-    client = apiclient.ApiClient('get', cvmAddress,'hosts','',username,password,'v2.0')
-    results = client.get_info()
-    return jsonify(results)
 
-"""
-get the cluster's storage performance
-"""
-@bp.route('/storage-performance',methods=['POST'])
+
+@bp.route("/storage-performance", methods=["POST"])
 def storage_performance():
     # get the request's POST data
     get_form()
@@ -97,17 +97,49 @@ def storage_performance():
     endTime = round(time.mktime(endTime.timetuple()) * 1000 * 1000)
     startTime = round(time.mktime(startTime.timetuple()) * 1000 * 1000)
 
-    client = apiclient.ApiClient('get',cvmAddress,f'cluster/stats/?metrics=controller_avg_io_latency_usecs&startTimeInUsecs={startTime}&endTimeInUsecs={endTime}&intervalInSecs=30','',username,password,'v1','PrismGateway/services/rest')
-    results = client.get_info()
-    return jsonify(results)
+    # first, get the external IP address of the first cluster registered to this Prism Central instance
+    entity = "cluster"
+    client = apiclient.ApiClient(
+        method="post",
+        cluster_ip=cvmAddress,
+        request=f"{entity}s/list",
+        entity=entity,
+        body=f'{{"kind": "{entity}"}}',
+        username=username,
+        password=password,
+    )
+    cluster_ip = client.get_info()["entities"][0]["status"]["resources"]["network"][
+        "external_ip"
+    ]
 
-"""
-get the container info e.g. # of containers
-"""
-@bp.route('/container-info',methods=['POST'])
-def containers():
-    # get the request's POST data
-    get_form()
-    client = apiclient.ApiClient('get',cvmAddress,f'storage_containers','',username,password,'v2.0')
-    results = client.get_info()
-    return jsonify(results)
+    # next, get the UUID of the first storage container in the cluster found in our previous request
+    entity = "storage_containers"
+    client = apiclient.ApiClient(
+        method="get",
+        cluster_ip=cluster_ip,
+        request=entity,
+        entity="",
+        body="",
+        username=username,
+        password=password,
+        version="v2.0",
+    )
+    storage_container_uuid = client.get_info()["entities"][0]["id"]
+
+    # finally, get the performance stats for the storage container found in our previous request
+    entity = "storage_containers"
+    full_request = f"storage_containers/{storage_container_uuid}/stats/?metrics=controller_avg_io_latency_usecs&start_time_in_usecs={startTime}&end_time_in_usecs={endTime}"
+    client = apiclient.ApiClient(
+        method="get",
+        cluster_ip=cluster_ip,
+        request=full_request,
+        entity="",
+        body="",
+        username=username,
+        password=password,
+        version="v2.0",
+    )
+    stats = client.get_info()
+
+    # return the JSON array containing storage container performance info for the last 4 hours
+    return jsonify(stats)

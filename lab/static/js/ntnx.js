@@ -23,132 +23,53 @@ NtnxDashboard = {
         $( '#' + cell ).html( '<span class="gs-resize-handle gs-resize-handle-both"></span>' );
     },
 
-    physicalInfo: function( cvmAddress, username, password )
-    {
+    /**
+    *
+    * @param {*} token
+    * @param {*} cvmAddress
+    * @param {*} username
+    * @param {*} password
+    * @param {*} entity
+    * @param {*} pageElement
+    * @param {*} elementTitle
+    *
+    * main function to build and send the entity list requests
+    * the previous version of this used a single function for each request
+    *
+    */
+    pcListEntities: function( cvmAddress, username, password, entity, pageElement, elementTitle ) {
 
-	    physicalData = $.ajax({
-		    url: '/ajax/physical-info',
-		    type: 'POST',
-		    dataType: 'json',
-		    data: { _cvmAddress: cvmAddress, _username: username, _password: password },
-	    });
-
-        physicalData.success( function(data) {
-
-            hostSerials = '';
-            $.each( data['entities'], function() {
-                hostSerials = hostSerials + 'S/N&nbsp;' + this.serial + '<br>';
-            });
-		
-            NtnxDashboard.resetCell( 'hosts' );
-                $( '#hosts' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">' + data['metadata']['count'] + ' Hosts</div>' );
-                $( '#hosts' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">' + hostSerials + '</div>' );
-            });
-
-        physicalData.fail(function ( jqXHR, textStatus, errorThrown )
-        {
-            console.log('error getting physical info');
-        });
-    },
-
-    vmInfo: function( cvmAddress, username, password )
-    {
-
-        vmData = $.ajax({
-            url: '/ajax/vm-info',
+        pcEntityInfo = $.ajax({
+            url: '/ajax/pc-list-entities',
             type: 'POST',
             dataType: 'json',
-            data: { _cvmAddress: cvmAddress, _username: username, _password: password },
+            data: { _cvmAddress: cvmAddress, _username: username, _password: password, _entity: entity, _pageElement: pageElement, _elementTitle: elementTitle },
         });
 
-        vmData.success( function(data) {
-            NtnxDashboard.resetCell( 'vmInfo' );
-            $( '#vmInfo' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">VM(s)</div><div>' + data['metadata']['count'] + '</div><div></div>');
-        });
+        pcEntityInfo.done( function(data) {
 
-        vmData.fail(function ( jqXHR, textStatus, errorThrown )
-        {
-            console.log('error getting vm info')
-        });
-    },
+            NtnxDashboard.resetCell( pageElement );
+            $( '#' + pageElement  ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">' + elementTitle + '</div><div>' + data.metadata.total_matches + '</div><div></div>');
 
-    containerInfo: function( cvmAddress, username, password )
-    {
+            switch( entity ) {
+                case 'project':
 
-        containerData = $.ajax({
-            url: '/ajax/container-info',
-            type: 'POST',
-            dataType: 'json',
-            data: { _cvmAddress: cvmAddress, _username: username, _password: password },
-        });
+                    $( '#project_details' ).addClass( 'info_big' ).html( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Project List</div>' );
 
-        containerData.success( function(data) {
-            NtnxDashboard.resetCell( 'containers' );
-            $( '#containers' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Container(s)</div><div>' + data['metadata']['count'] + '</div><div></div>');
-        });
+                    $( data.entities ).each( function( index, item ) {
+                        $( '#project_details' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">' +  item.status.name + '</div>' );
+                    });
 
-        containerData.fail(function ( jqXHR, textStatus, errorThrown )
-        {
-            console.log('error getting container info')
-        });
-    },
+                    $( '#project_details' ).append( '</div><div></div>' );
 
-    clusterInfo: function( cvmAddress, username, password )
-    {
+                default:
+                    break;
+            }
 
-        clusterInfo = $.ajax({
-            url: '/ajax/cluster-info',
-            type: 'POST',
-	    dataType: 'json',
-            data: { _cvmAddress: cvmAddress, _username: username, _password: password },
-        });
-
-        clusterInfo.success( function(data) {
-		
-		cluster_entity = data['entities'][0];
-
-            NtnxDashboard.resetCell( 'nosVersion' );
-            $( '#nosVersion' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">AOS</div><div>' + cluster_entity['status']['resources']['config']['build']['version'] + '</div><div></div>');
-
-            NtnxDashboard.resetCell( 'clusterSummary' );
-            $( '#clusterSummary' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Cluster</div><div>' + cluster_entity['status']['name'] + '</div><div></div>');
-
-            NtnxDashboard.resetCell( 'blocks' );
-            $( '#blocks' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Hypervisors</div>' );
-            $( '#blocks' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">' );
-
-            ahv = false;
-            vmware = false;
-            hyperv = false;
-            $( cluster_entity['status']['resources']['nodes']['hypervisor_server_list'] ).each( function( index, item ) {
-                switch( item['type'] )
-                {
-                    case 'AHV':
-                        if( ahv != true ) {
-                            $( '#blocks' ).append( 'AHV<br>' );
-                        }
-                        ahv = true;
-                        break;
-                    case 'VMware':
-                        $( '#blocks' ).append( 'ESXi<br>' );
-                        break;
-                    case 'Hyper-V':
-                        $( '#blocks' ).append( 'Hyper-V<br>' );
-                        break;
-                }
-            });
-
-            $( '#blocks' ).append( '</div' );
-
-        });
-
-        clusterInfo.fail(function ( jqXHR, textStatus, errorThrown )
-        {
-            NtnxDashboard.resetCell( 'clusterSummary' );
-            $( '#clusterSummary' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Cluster</div><div>' + textStatus + '</div><div></div>');
         });
 
     },
+    /* pcListEntities */
 
     storagePerformance: function( cvmAddress, username, password ) {
 
@@ -157,12 +78,12 @@ NtnxDashboard = {
             url: '/ajax/storage-performance',
             type: 'POST',
             dataType: 'json',
-            data: { _cvmAddress: cvmAddress, _username: username, _password: password },
+            data: { _cvmAddress: cvmAddress, _username: username, _password: password, _entity: "containers" },
         });
 
         request.success( function(data) {
 
-            var plot1 = $.jqplot ('controllerIOPS', [ data['statsSpecificResponses'][0]['values'] ], {
+            var plot1 = $.jqplot ('controllerIOPS', [ data['stats_specific_responses'][0]['values'] ], {
                 title: 'Controller Average I/O Latency (Last 4 Hours)',
                 animate: true,
                 axesDefaults: {
@@ -215,12 +136,6 @@ NtnxDashboard = {
 
     },
 
-    // removeGraph: function( token ) {
-    //     var gridster = $( '.gridster ul' ).gridster().data( 'gridster' );
-    //     var element = $( '#bigGraph' );
-    //     gridster.remove_widget( element );
-    // },
-
     loadLayout: function()
     {
         request = $.ajax({
@@ -248,7 +163,7 @@ NtnxDashboard = {
             $( 'li#footerWidget' ).addClass( 'panel' ).append( '<div class="panel-body"><div id="controllerIOPS" style="height: 150px; width: 1000px; text-align: center;"></div></div>' );
 
             NtnxDashboard.resetCell( 'bigGraph' );
-            $( '#bigGraph' ).addClass( 'info_hilite' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Hey ...</div><div>Enter your cluster details above, then click the Go button ...</div>');
+            $( '#bigGraph' ).addClass( 'info_hilite' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Hey ...</div><div>Enter your Prism Central details above, then click the Go button ...</div>');
             $( '#hints' ).addClass( 'info_hilite' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Also ...</div><div>Drag &amp; Drop<br>The Boxes</div>');
 
         });
@@ -323,16 +238,20 @@ NtnxDashboard = {
             else
             {
                 NtnxDashboard.resetCell( 'bigGraph' );
-                $( '#bigGraph' ).html( '<span class="gs-resize-handle gs-resize-handle-both"></span>' ).removeClass( 'info_hilite' ).removeClass( 'info_error' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Ok ...</div><div>Let\'s test your cluster details ...</div>');
+                $( '#bigGraph' ).html( '<span class="gs-resize-handle gs-resize-handle-both"></span>' ).removeClass( 'info_hilite' ).removeClass( 'info_error' ).addClass( 'info_big' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Ok ...</div><div>Gathering environment details...</div>');
                 NtnxDashboard.resetCell( 'hints' );
                 $( '#hints' ).html( '<span class="gs-resize-handle gs-resize-handle-both"></span>' ).addClass( 'info_hilite' ).append( '<div style="color: #6F787E; font-size: 25%; padding: 10px 0 0 0;">Also ...</div><div>Drag &amp; Drop<br>The Boxes</div>');
 
-                NtnxDashboard.clusterInfo( cvmAddress, username, password );
-		
-                NtnxDashboard.physicalInfo( cvmAddress, username, password );
-                NtnxDashboard.vmInfo( cvmAddress, username, password );
-                NtnxDashboard.storagePerformance( cvmAddress, username, password );
-                NtnxDashboard.containerInfo( cvmAddress, username, password );
+                // pcListEntities: function( cvmAddress, username, password, entity, pageElement, elementTitle ) {
+                NtnxDashboard.pcListEntities( cvmAddress, username, password, "vm", 'vm_count', 'VMs' );
+                NtnxDashboard.pcListEntities( cvmAddress, username, password, "cluster", 'registered_clusters', 'Registered Clusters' );
+                NtnxDashboard.pcListEntities( cvmAddress, username, password, 'image', 'image_count', 'Images' );
+                NtnxDashboard.pcListEntities( cvmAddress, username, password, 'host', 'host_count', 'Hosts &amp; PC Nodes' );
+                NtnxDashboard.pcListEntities( cvmAddress, username, password, 'project', 'project_count', 'Project Count' );
+                NtnxDashboard.pcListEntities( cvmAddress, username, password, 'app', 'app_count', 'Calm Apps' );
+
+                NtnxDashboard.storagePerformance( cvmAddress, username, password, 'controllerIOPS', 'Controller IOPS' );
+
             }
 
             e.preventDefault();
