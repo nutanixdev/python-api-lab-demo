@@ -9,7 +9,5 @@ services:
       dockerfile: Dockerfile
     image: nutanixdev/flask_app
     tty: true
-    ports:
-      - 5001:5001
     network_mode: "host"
 
